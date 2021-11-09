@@ -14,7 +14,7 @@
 	- [ ] Apresentação das interfaces de rede por ordem alfabética
 - [ ] Argumento capaz de controlar o número de interfaces a mostrar (**-p**)
 - [ ] Alterar a ordem da tabela com um argumento extra
-	- [ ]** -t** ordenar por TX
+	- [ ] **-t** ordenar por TX
 	- [ ] **-r** ordenar por RX ascendente
 	- [ ] **-T** ordenar por TRATE ascendente
 	- [ ] **-R** ordenar por RRATE ascendente
