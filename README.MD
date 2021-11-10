@@ -23,6 +23,7 @@
 	- [ ] 2 colunas para mostrar a quantidade de dados transmitidos e recebidos desde o início da execução 
 	- [ ] As outras colunas representam apenas a última iteração
 - [ ] Validar nos PCs da sala 101
+- [ ] relatorio
 
 # Comandos úteis
 * ifconfig
