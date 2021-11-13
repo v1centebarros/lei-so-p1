@@ -2,6 +2,7 @@
 
 
 # TODO LIST
+- [ ] tentar imprimir a informação num determinado intervalo de tempo
 - [ ] Validação dos parâmetros de entrada
 - [ ] Argumento obrigatório para calcular as taxas de transferência
 - [ ] Selecionar a interface de rede a analisar através de RegEx (**-c**)
