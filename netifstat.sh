@@ -31,24 +31,27 @@ function validate_args() {
 function print_table() {
     local TABLEHEADER="%-20s %-12s %-12s %-12s %-12s\n"
     local TABLECONTENT="%-20s %-12s %-12s %-12.2f %-12.2f\n"
-
-    #sleep $TIME
+    local ITF_DATA=()
     for i in $@
     do
-        TXi=$(ifconfig $i | awk '/RX packets /{print $5}')
-        RXi=$(ifconfig $i | awk '/TX packets /{print $5}')   
+        ITF_DATA+=($(ifconfig $i | awk '/RX packets /{print $5}'))
+        ITF_DATA+=($(ifconfig $i | awk '/TX packets /{print $5}'))
     done
-
-    sleep $TIME
-
+    sleep $TIME    
     printf "$TABLEHEADER" "NETIF" "TX" "RX" "TRATE" "RRATE"
+    
+    idx=-1
     for i in $@
     do
-        TX=$(($(ifconfig $i | awk '/RX packets /{print $5}')-$TXi))
-        RX=$(($(ifconfig $i | awk '/TX packets /{print $5}')-$TXi))
-       
-        TXRATEi=$(($TX/$TIME))
-        RXRATEi=$(($RX/$TIME))
+        #TX do intervalo (final - inicial)
+        TX=$(($(ifconfig $i | awk '/RX packets /{print $5}')-${ITF_DATA[$(($idx+1))]}))
+        #RX do intervalo (final - inicial)
+        RX=$(($(ifconfig $i | awk '/TX packets /{print $5}')-${ITF_DATA[$(($idx+2))]}))
+
+        TXRATE=$(($TX/$TIME))
+        RXRATE=$(($RX/$TIME))
+        #Como sabemos que queremos apenas o TX e o RX sabemos que ao ir buscar a informação ao vetor é sempre idx+1 ou idx+2
+        ((idx+=2)) 
         printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
     done
 }

@@ -9,8 +9,8 @@
 	- [ ] Bytes (**-b**)
 	- [ ] Kilobytes (**-k**)
 	- [ ] Megabytes (**-m**)
-- [ ] Apresentação da informação em forma de tabela
-	- [ ] Cabeçalho
+- [X] Apresentação da informação em forma de tabela
+	- [X] Cabeçalho
 	- [ ] Apresentação das interfaces de rede por ordem alfabética
 - [ ] Argumento capaz de controlar o número de interfaces a mostrar (**-p**)
 - [ ] Alterar a ordem da tabela com um argumento extra
