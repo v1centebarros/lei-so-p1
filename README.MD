@@ -2,6 +2,7 @@
 
 
 # TODO LIST
+- [ ] tentar imprimir a informação num determinado intervalo de tempo
 - [ ] Validação dos parâmetros de entrada
 - [X] Argumento obrigatório para calcular as taxas de transferência
 - [ ] Selecionar a interface de rede a analisar através de RegEx (**-c**)
@@ -23,6 +24,7 @@
 	- [ ] 2 colunas para mostrar a quantidade de dados transmitidos e recebidos desde o início da execução 
 	- [ ] As outras colunas representam apenas a última iteração
 - [ ] Validar nos PCs da sala 101
+- [ ] relatorio
 
 # Comandos úteis
 * ifconfig
