@@ -2,22 +2,26 @@
 clear
 
 INTERFACES=$(ip -o link show | awk -F': ' '{print $2}')
-
-TIME=10
+DATA_SIZE=0 #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
+TIME=$1
 
 function main() {
-    print_table ${INTERFACES}
-    validate_args $@
+    print_table $(echo $INTERFACES | xargs -n1 | sort | xargs) # Inte
+    #validate_args $@
 }
 
 
 function validate_args() {
-    while getopts ':c' option; do
+    while getopts ':c:' option; do
     case ${option} in
     c )
-        echo "Cona"
+        print_table ${INTERFACES}
     ;;
-    
+
+    :)
+      echo "$0: Must supply an argument to -$OPTARG." >&2
+      exit 1
+    ;;
     ?)
       echo "Invalid option: -${OPTARG}."
       exit 2

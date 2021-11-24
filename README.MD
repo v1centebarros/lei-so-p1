@@ -3,7 +3,7 @@
 
 # TODO LIST
 - [ ] Validação dos parâmetros de entrada
-- [ ] Argumento obrigatório para calcular as taxas de transferência
+- [X] Argumento obrigatório para calcular as taxas de transferência
 - [ ] Selecionar a interface de rede a analisar através de RegEx (**-c**)
 - [ ] Visualizar a informação em diferentes tamanhos de informação
 	- [ ] Bytes (**-b**)
@@ -11,7 +11,7 @@
 	- [ ] Megabytes (**-m**)
 - [X] Apresentação da informação em forma de tabela
 	- [X] Cabeçalho
-	- [ ] Apresentação das interfaces de rede por ordem alfabética
+	- [X] Apresentação das interfaces de rede por ordem alfabética
 - [ ] Argumento capaz de controlar o número de interfaces a mostrar (**-p**)
 - [ ] Alterar a ordem da tabela com um argumento extra
 	- [ ] **-t** ordenar por TX
