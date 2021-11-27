@@ -24,7 +24,7 @@
 	- [ ] 2 colunas para mostrar a quantidade de dados transmitidos e recebidos desde o início da execução 
 	- [ ] As outras colunas representam apenas a última iteração
 - [ ] Validar nos PCs da sala 101
-- [ ] relatorio
+- [ ] Relatório
 
 # Comandos úteis
 * ifconfig
@@ -45,3 +45,5 @@
 * Saber se a posição do valor de tempo é sempre o último ou pode variar
 * Devia dar erro `bash ./netifstat.sh -p 1 -c "l.*" 1 -b -k 1`
 * É preciso dar fix às divisões
+
+* Para tratar do Revese fazer algo do tipo

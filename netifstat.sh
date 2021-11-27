@@ -1,20 +1,33 @@
 #!/bin/bash
-#clear
+clear
 
-INTERFACES=$(ip -o link show | awk -F': ' '{print $2}' | xargs -n1 | sort | xargs)
-DATA_SIZE=-1 #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
-TIME=${@: -1}
-REGEX_STR=-1
-LIST_SIZE=-1
-SORT_TYPE=-1
-IS_LOOP=0
+INTERFACES=$(ip -o link show | awk -F': ' '{print $2}' | sort)  #Interfaces de rede ordenadas por ordem alfabética
+DATA_SIZE=-1                                                    #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
+TIME=${@: -1}                                                   #Input do utilizador do tempo que o programa deve correr
+REGEX_STR=-1                                                    #Regex inserida quando utilizada a flag -c
+LIST_SIZE=-1                                                    #Inteiro positivo que define o número de interfaces a mostar quando utilizada a flag -p
+SORT_TYPE=-1                                                    #Inteiro que define o tipo de ordenação usada quando utilizado as opções de ordenação
+IS_LOOP=0                                                       #(0-1) define se o programa deve ser corrido em loop (flag -l)
+IS_REVERSE=0                                                    #(0-1) define se a flag -v foi utilizada para mostrar a ordem inversa
 
+
+#Função onde o script é iniciado e onde a ordem de execução das funções é definida 
 function main() {
-    validate_args $@
-    data_cleansing
-    print_data
+    validate_args $@                                            #Validação dos dados inseridos
+    data_cleansing                                              #Filtragem das interfaces a mostrar consoante as opções usadas
+    print_data                                                  #Impressão da tabela de dados gerada após o tratamento dos dados
 }
 
+# Função responsável pela validação dos dados e das opções inseridos pelo user
+# Através do comando getopts são verificadas as opções inseridas e em cada uma
+# é executada uma diferente tarefa
+# -c é passado para a variável REGEX_STR o valor da regex inserida
+# -p é verificado se o valor inserido é um número inteiro positivo 
+# e passado para a variável LIST_SIZE
+# -b/-k/-m é verificado se não estão a ser usadas duas em simultâneo caso contrário
+# é passado um código para a variável DATA_SIZE
+# -t-/T/-r/-R funcionamento semelhante aos comandos anteriores onde a variável é SORT_TYPE
+# -v é passado para a variável IS_REVERSE o valor 1
 function validate_args() {
     while getopts 'c:p:bkmltrTRv' option; do
         case ${option} in
@@ -58,7 +71,7 @@ function validate_args() {
             ;;
             
             v )
-                validate_sort_type 5
+                IS_REVERSE=1
             ;;
 
 
@@ -67,6 +80,10 @@ function validate_args() {
 
 }
 
+# Função responsável por validar os dados das opções -b/-k/-m
+# Verifica se DATA_SIZE continua com o valor -1 (ainda não usada)
+# caso seja -1 DATA_SIZE passa a ser igual ao argumento passado para a função
+# caso seja diferente -1 envia mensagem de erro
 function validate_data_size () {
         if [[ $DATA_SIZE -eq -1 ]];then
         DATA_SIZE=$1
@@ -77,7 +94,10 @@ function validate_data_size () {
 
 }
 
-
+# Função responsável por validar os dados das opções -t-/T/-r/-R
+# Verifica se SORT_TYPE continua com o valor -1 (ainda não usada)
+# caso seja -1 SORT_TYPE passa a ser igual ao argumento passado para a função
+# caso seja diferente -1 envia mensagem de erro
 function validate_sort_type () {
         if [[ $SORT_TYPE -eq -1 ]];then
         SORT_TYPE=$1
@@ -85,9 +105,14 @@ function validate_sort_type () {
         echo "ERRO! Múltiplos valores foram inseridos para o tipo de sort"
         exit 1
     fi
-
 }
 
+# Função responsável pela filtragem das interfaces consoante os filtros
+# selecionados pelo utilizador. Começa por verificar a Regex inserida e
+# itera por todas as Interfaces adicionando a interfaces_filtered as válidas
+# passa a seguir para o número de interfaces a mostrar (-p) com o comando cut
+# são selecionadas da interface 1 até n e o resto é removido
+# Caso não seja selecionada nenhuma opção de tamanho de dados é assumido o -b(código 0)
 function data_cleansing () {
     local interfaces_filtered=()
     if [[ ! $REGEX_STR = -1 ]]; then
@@ -100,7 +125,6 @@ function data_cleansing () {
         INTERFACES=${interfaces_filtered[@]}
     fi
     
-
     if [[ ! $LIST_SIZE = -1 ]]; then
         INTERFACES=$(cut -d ' ' -f 1-$LIST_SIZE <<< $INTERFACES)
     fi
@@ -110,20 +134,25 @@ function data_cleansing () {
     fi
 }
 
+# Função responsável pela impressão dos resultados
+# É efetuada a recolha de dados uma primeira vez e
+# a seguir é feito um sleep para dar o intervalo de recolha de dados
+# e estes guardados num array
+# terminado o sleep é efetuada a segunda iteração sobre as interface
+# para recolher os dados finais e calculados os valores a mostrar 
 function print_table() {
-    local TABLECONTENT="%-20s %-12s %-12s %-12.2f %-12.2f\n"
+    local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
     local ITF_DATA=()
 
-    for i in $@
+    for i in $INTERFACES
     do
         ITF_DATA+=($(ifconfig $i | awk '/RX packets /{print $5}'))
         ITF_DATA+=($(ifconfig $i | awk '/TX packets /{print $5}'))
     done
     sleep $TIME    
     
-    
     idx=-1
-    for i in $@
+    for i in $INTERFACES
     do
         #TX do intervalo (final - inicial)
         TX=$(($(ifconfig $i | awk '/RX packets /{print $5}')-${ITF_DATA[$(($idx+1))]}))
@@ -131,12 +160,12 @@ function print_table() {
         RX=$(($(ifconfig $i | awk '/TX packets /{print $5}')-${ITF_DATA[$(($idx+2))]}))
 
         if [[ ! $DATA_SIZE = 0 ]];then
-            TX=$(($TX/1024*$DATA_SIZE))
-            RX=$(($RX/1024*$DATA_SIZE))
+            TX=$(echo "scale=2 ;$TX/1024*$DATA_SIZE" | bc)
+            RX=$(echo "scale=2 ;$RX/1024*$DATA_SIZE" | bc)
         fi
 
-        TXRATE=$(($TX/$TIME))
-        RXRATE=$(($RX/$TIME))
+        TXRATE=$(echo "scale=2;$TX/$TIME" | bc)
+        RXRATE=$(echo "scale=2;$RX/$TIME" | bc)
         #Como sabemos que queremos apenas o TX e o RX sabemos que ao ir buscar a informação ao vetor é sempre idx+1 ou idx+2
         ((idx+=2)) 
         printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
@@ -155,23 +184,23 @@ function print_data() {
                 print_table $INTERFACES
             ;;
             1 )
-                print_table $INTERFACES | sort -k 2 -n -r
+                print_table $INTERFACES | sort -k 2 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
             ;;
 
             2 )
-                print_table $INTERFACES | sort -k 3 -n -r
+                print_table $INTERFACES | sort -k 3 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
             ;;
 
             3 )
-                print_table $INTERFACES | sort -k 4 -n -r
+                print_table $INTERFACES | sort -k 4 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
             ;;
 
             4 )
-                print_table $INTERFACES | sort -k 5 -n -r
+                print_table $INTERFACES | sort -k 5 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
             ;;
 
             5 )
-                print_table $INTERFACES | sort -r
+                print_table $INTERFACES | sort -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
             ;;
         
         
