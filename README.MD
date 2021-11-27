@@ -2,10 +2,10 @@
 
 
 # TODO LIST
-- [ ] tentar imprimir a informação num determinado intervalo de tempo
+- [X] tentar imprimir a informação num determinado intervalo de tempo
 - [ ] Validação dos parâmetros de entrada
 - [X] Argumento obrigatório para calcular as taxas de transferência
-- [ ] Selecionar a interface de rede a analisar através de RegEx (**-c**)
+- [X] Selecionar a interface de rede a analisar através de RegEx (**-c**)
 - [ ] Visualizar a informação em diferentes tamanhos de informação
 	- [ ] Bytes (**-b**)
 	- [ ] Kilobytes (**-k**)
@@ -13,7 +13,7 @@
 - [X] Apresentação da informação em forma de tabela
 	- [X] Cabeçalho
 	- [X] Apresentação das interfaces de rede por ordem alfabética
-- [ ] Argumento capaz de controlar o número de interfaces a mostrar (**-p**)
+- [X] Argumento capaz de controlar o número de interfaces a mostrar (**-p**)
 - [ ] Alterar a ordem da tabela com um argumento extra
 	- [ ] **-t** ordenar por TX
 	- [ ] **-r** ordenar por RX ascendente
@@ -38,3 +38,9 @@
 * printf
 * sleep
 * sort
+
+
+# TODO
+
+* Saber se a posição do valor de tempo é sempre o último ou pode variar
+* Devia dar erro `bash ./netifstat.sh -p 1 -c "l.*" 1 -b -k 1`
