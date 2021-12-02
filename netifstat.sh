@@ -32,16 +32,11 @@ function validate_args() {
     while getopts 'c:p:bkmltrTRv' option; do
         case ${option} in
             c )
-                REGEX_STR=${OPTARG}
+                validate_regex_string
             ;;
 
             p ) 
-                if [[ ${OPTARG} =~ ^[0-9]+$ ]]; then
-                    LIST_SIZE=${OPTARG}
-                else
-                    echo "ERRO! valor inválido para -p"
-                    exit 1
-                fi
+                validate_list_size
             ;;
 
             b )
@@ -106,6 +101,42 @@ function validate_sort_type () {
         exit 1
     fi
 }
+
+
+# Função responsável por validar os dados das opção -p
+# Caso a opção seja usada mais que uma vez o script deve
+# Lançar um erro e parar imediatamente. Começa-se por validar
+# se o $LIST_SIZE é -1 (ainda não usado) e depois é validado se
+# o valor inserido é um valor inteiro positivo
+
+function validate_list_size () {
+    if [[ $LIST_SIZE -eq -1 ]];then 
+        if [[ ${OPTARG} =~ ^[0-9]+$ ]]; then
+            LIST_SIZE=${OPTARG}
+        else
+            echo "ERRO! valor inválido para -p"
+            exit 1
+        fi
+    else
+        echo "ERRO! Opção -p inserida mais que uma vez"
+        exit 1
+    fi
+
+}
+
+# Função responsável por validar os dados das opção -c
+# Caso a opção seja usada mais que uma vez o script deve
+# Lançar um erro e parar imediatamente. Começa-se por validar
+# se o $REGEX_STR é -1 (ainda não usado)
+function validate_regex_string () {
+    if [[ $REGEX_STR = -1 ]]; then
+        REGEX_STR=${OPTARG}
+    else
+        echo "ERRO a opção -c foi utilizada mais do que uma vez"
+        exit 1
+    fi
+}
+
 
 # Função responsável pela filtragem das interfaces consoante os filtros
 # selecionados pelo utilizador. Começa por verificar a Regex inserida e
