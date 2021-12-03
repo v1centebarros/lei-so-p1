@@ -43,3 +43,4 @@
 # TODO
 
 * Devia dar erro `./netifstat.sh -p 1 -c "l.*" 1 -b -k 1`
+* Devia dar erro `./netifstat.sh -p 1'
