@@ -1,5 +1,5 @@
 #!/bin/bash
-#clear
+clear
 
 INTERFACES=$(ip -o link show | awk -F': ' '{print $2}' | sort)  #Interfaces de rede ordenadas por ordem alfabética
 DATA_SIZE=-1                                                    #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
@@ -9,7 +9,7 @@ LIST_SIZE=-1                                                    #Inteiro positiv
 SORT_TYPE=-1                                                    #Inteiro que define o tipo de ordenação usada quando utilizado as opções de ordenação
 IS_LOOP=0                                                       #(0-1) define se o programa deve ser corrido em loop (flag -l)
 IS_REVERSE=0                                                    #(0-1) define se a flag -v foi utilizada para mostrar a ordem inversa
-
+declare -A LOOP_DATA
 
 #Função onde o script é iniciado e onde a ordem de execução das funções é definida 
 function main() {
@@ -29,7 +29,6 @@ function main() {
 # -t-/T/-r/-R funcionamento semelhante aos comandos anteriores onde a variável é SORT_TYPE
 # -v é passado para a variável IS_REVERSE o valor 1
 function validate_args() {
-
     while getopts 'c:p:bkmltrTRv' option; do
         case ${option} in
             c )
@@ -73,10 +72,30 @@ function validate_args() {
             l )
                 IS_LOOP=1
             ;;
-
+            ?)
+                echo "Invalid option: -${OPTARG}."
+                echo
+                usage
+            ;;
         esac
     done
 
+}
+
+function usage {
+        echo "Usage: $(basename $0) [-cpbkmltrTRv]" 2>&1
+        echo '   -c   filtra por expressão regular'
+        echo '   -p   número de interfaces a mostrar'
+        echo '   -b   Mostrar dados em bytes'
+        echo '   -k   Mostrar dados em kilobytes'
+        echo '   -b   Mostrar dados em megabytes'
+        echo '   -d   shows d in the output'
+        echo '   -t   ordenar por TX'
+        echo '   -r   ordenar por RX'
+        echo '   -T   ordenar por TRATE'
+        echo '   -R   ordenar por RRATE'
+        echo '   -v   ordenar pela ordem inversa'
+        exit 1
 }
 
 # Função responsável por validar os dados das opções -b/-k/-m
@@ -106,13 +125,11 @@ function validate_sort_type () {
     fi
 }
 
-
 # Função responsável por validar os dados das opção -p
 # Caso a opção seja usada mais que uma vez o script deve
 # Lançar um erro e parar imediatamente. Começa-se por validar
 # se o $LIST_SIZE é -1 (ainda não usado) e depois é validado se
 # o valor inserido é um valor inteiro positivo
-
 function validate_list_size () {
     if [[ $LIST_SIZE -eq -1 ]];then 
         if [[ ${OPTARG} =~ ^[0-9]+$ ]]; then
@@ -141,7 +158,6 @@ function validate_regex_string () {
     fi
 }
 
-
 # Função responsável pela filtragem das interfaces consoante os filtros
 # selecionados pelo utilizador. Começa por verificar a Regex inserida e
 # itera por todas as Interfaces adicionando a interfaces_filtered as válidas
@@ -161,7 +177,7 @@ function data_cleansing () {
     fi
     
     if [[ ! $LIST_SIZE = -1 ]]; then
-        INTERFACES=$(cut -d ' ' -f 1-$LIST_SIZE <<< $INTERFACES)
+        INTERFACES=$(cut -d ' ' -f 1-$LIST_SIZE <<< ${INTERFACES[@]})
     fi
 
     if [[ $DATA_SIZE = -1 ]]; then
@@ -177,7 +193,6 @@ function data_cleansing () {
 # para recolher os dados finais e calculados os valores a mostrar 
 function print_table() {
     local ITF_DATA=()
-    local LOOP_DATA=()
     for i in $INTERFACES
     do
         ITF_DATA+=($(ifconfig $i | awk '/RX packets /{print $5}'))
@@ -202,16 +217,16 @@ function print_table() {
 
         TXRATE=$(echo "scale=2;$TX/$TIME" | bc)
         RXRATE=$(echo "scale=2;$RX/$TIME" | bc)
-                
-        LOOP_DATA[$idx+1]=$((${LOOP_DATA[$idx+1]}+$TX))
-        LOOP_DATA[$idx+2]=$((${LOOP_DATA[$idx+2]}+$RX))
+
+        LOOP_DATA[$(($idx+1))]=$((${LOOP_DATA[$(($idx+1))]}+$TX))
+        LOOP_DATA[$(($idx+2))]=$((${LOOP_DATA[$(($idx+2))]}+$RX))
 
         if [[ $IS_LOOP = 0 ]]; then
             local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
             printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
         else
             local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s %-12s %-12s\n"
-            printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE" "${LOOP_DATA[$idx+1]}" "${LOOP_DATA[$idx+2]}"
+            printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE" "${LOOP_DATA[$(($idx+1))]}" "${LOOP_DATA[$(($idx+2))]}"
         fi
         #Como sabemos que queremos apenas o TX e o RX sabemos que ao ir buscar a informação ao vetor é sempre idx+1 ou idx+2
         ((idx+=2)) 
@@ -221,31 +236,25 @@ function print_table() {
 function print_sorted_data() {
         case $SORT_TYPE in
         -1 ) 
-            print_table $INTERFACES
+            print_table
         ;;
         1 )
-            print_table $INTERFACES | sort -k 2 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 2 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
 
         2 )
-            print_table $INTERFACES | sort -k 3 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 3 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
 
         3 )
-            print_table $INTERFACES | sort -k 4 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 4 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
 
         4 )
-            print_table $INTERFACES | sort -k 5 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
-        ;;
-
-        5 )
-            print_table $INTERFACES | sort -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 5 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
     esac
 }
-
-
 
 function print_data() {
     if [[ $IS_LOOP = 0 ]];then
@@ -263,6 +272,5 @@ function print_data() {
         done   
     fi 
 }
-
 
 main $@
