@@ -204,7 +204,7 @@ function print_table() {
         RXRATE=$(echo "scale=2;$RX/$TIME" | bc)
                 
         LOOP_DATA[$idx+1]=$((${LOOP_DATA[$idx+1]}+$TX))
-        LOOP_DATA[$idx+1]=$((${LOOP_DATA[$idx+1]}+$RX))
+        LOOP_DATA[$idx+2]=$((${LOOP_DATA[$idx+2]}+$RX))
 
         if [[ $IS_LOOP = 0 ]]; then
             local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
@@ -259,7 +259,7 @@ function print_data() {
         while :
         do
             print_sorted_data
-            echo "\n"
+            printf "\n"
         done   
     fi 
 }
