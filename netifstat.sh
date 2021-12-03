@@ -207,10 +207,10 @@ function print_table() {
         LOOP_DATA[$idx+2]=$((${LOOP_DATA[$idx+2]}+$RX))
 
         if [[ $IS_LOOP = 0 ]]; then
-            local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
+            local TABLECONTENT="%-20s %-12s %-12s %-12.1f %-12.1f\n"
             printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
         else
-            local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s %-12s %-12s\n"
+            local TABLECONTENT="%-20s %-12s %-12s %-12.1f %-12.1f %-12.1f %-12.1f\n"
             printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE" "${LOOP_DATA[$idx+1]}" "${LOOP_DATA[$idx+2]}"
         fi
         #Como sabemos que queremos apenas o TX e o RX sabemos que ao ir buscar a informação ao vetor é sempre idx+1 ou idx+2
