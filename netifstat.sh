@@ -1,5 +1,5 @@
 #!/bin/bash
-clear
+#clear
 
 INTERFACES=$(ip -o link show | awk -F': ' '{print $2}' | sort)  #Interfaces de rede ordenadas por ordem alfabética
 DATA_SIZE=-1                                                    #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
@@ -29,6 +29,7 @@ function main() {
 # -t-/T/-r/-R funcionamento semelhante aos comandos anteriores onde a variável é SORT_TYPE
 # -v é passado para a variável IS_REVERSE o valor 1
 function validate_args() {
+
     while getopts 'c:p:bkmltrTRv' option; do
         case ${option} in
             c )
@@ -68,7 +69,10 @@ function validate_args() {
             v )
                 IS_REVERSE=1
             ;;
-
+            
+            l )
+                IS_LOOP=1
+            ;;
 
         esac
     done
@@ -172,9 +176,8 @@ function data_cleansing () {
 # terminado o sleep é efetuada a segunda iteração sobre as interface
 # para recolher os dados finais e calculados os valores a mostrar 
 function print_table() {
-    local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
     local ITF_DATA=()
-
+    local LOOP_DATA=()
     for i in $INTERFACES
     do
         ITF_DATA+=($(ifconfig $i | awk '/RX packets /{print $5}'))
@@ -190,6 +193,8 @@ function print_table() {
         #RX do intervalo (final - inicial)
         RX=$(($(ifconfig $i | awk '/TX packets /{print $5}')-${ITF_DATA[$(($idx+2))]}))
 
+        
+
         if [[ ! $DATA_SIZE = 0 ]];then
             TX=$(echo "scale=2 ;$TX/1024*$DATA_SIZE" | bc)
             RX=$(echo "scale=2 ;$RX/1024*$DATA_SIZE" | bc)
@@ -197,50 +202,67 @@ function print_table() {
 
         TXRATE=$(echo "scale=2;$TX/$TIME" | bc)
         RXRATE=$(echo "scale=2;$RX/$TIME" | bc)
+                
+        LOOP_DATA[$idx+1]=$((${LOOP_DATA[$idx+1]}+$TX))
+        LOOP_DATA[$idx+1]=$((${LOOP_DATA[$idx+1]}+$RX))
+
+        if [[ $IS_LOOP = 0 ]]; then
+            local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
+            printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
+        else
+            local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s %-12s %-12s\n"
+            printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE" "${LOOP_DATA[$idx+1]}" "${LOOP_DATA[$idx+2]}"
+        fi
         #Como sabemos que queremos apenas o TX e o RX sabemos que ao ir buscar a informação ao vetor é sempre idx+1 ou idx+2
         ((idx+=2)) 
-        printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
     done
+}
+
+function print_sorted_data() {
+        case $SORT_TYPE in
+        -1 ) 
+            print_table $INTERFACES
+        ;;
+        1 )
+            print_table $INTERFACES | sort -k 2 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+        ;;
+
+        2 )
+            print_table $INTERFACES | sort -k 3 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+        ;;
+
+        3 )
+            print_table $INTERFACES | sort -k 4 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+        ;;
+
+        4 )
+            print_table $INTERFACES | sort -k 5 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+        ;;
+
+        5 )
+            print_table $INTERFACES | sort -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+        ;;
+    esac
 }
 
 
 
 function print_data() {
-    if [[ $IS_LOOP = 0 ]]; then
+    if [[ $IS_LOOP = 0 ]];then
         local TABLEHEADER="%-20s %-12s %-12s %-12s %-12s\n"
         printf "$TABLEHEADER" "NETIF" "TX" "RX" "TRATE" "RRATE"
-        
-        case $SORT_TYPE in
-            -1 ) 
-                print_table $INTERFACES
-            ;;
-            1 )
-                print_table $INTERFACES | sort -k 2 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
-            ;;
-
-            2 )
-                print_table $INTERFACES | sort -k 3 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
-            ;;
-
-            3 )
-                print_table $INTERFACES | sort -k 4 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
-            ;;
-
-            4 )
-                print_table $INTERFACES | sort -k 5 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
-            ;;
-
-            5 )
-                print_table $INTERFACES | sort -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
-            ;;
-        
-        
-        esac
+        print_sorted_data
     else
-        local TABLEHEADER="%-20s %-12s %-12s %-12s %-12s\n"
-        #TODO esta é para o loop
-    fi
+        local TABLEHEADER="%-20s %-12s %-12s %-12s %-12s %-12s %-12s\n"
+        printf "$TABLEHEADER" "NETIF" "TX" "RX" "TRATE" "RRATE" "TXTOT" "RXTOT"
 
+        while :
+        do
+            print_sorted_data
+            echo "\n"
+        done   
+    fi 
 }
+
 
 main $@

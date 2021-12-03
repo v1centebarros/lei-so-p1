@@ -42,8 +42,4 @@
 
 # TODO
 
-* Saber se a posição do valor de tempo é sempre o último ou pode variar
 * Devia dar erro `./netifstat.sh -p 1 -c "l.*" 1 -b -k 1`
-* É preciso dar fix às divisões
-
-* Para tratar do Revese fazer algo do tipo
