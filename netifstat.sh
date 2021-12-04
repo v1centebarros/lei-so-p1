@@ -1,26 +1,26 @@
 #!/bin/bash
 clear
 
-INTERFACES=($(ip -o link show | awk -F': ' '{print $2}' | sort))  #Interfaces de rede ordenadas por ordem alfabética
-DATA_SIZE=-1                                                    #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
-TIME=${@: -1}                                                   #Input do utilizador do tempo que o programa deve correr
-REGEX_STR=-1                                                    #Regex inserida quando utilizada a flag -c
-LIST_SIZE=-1                                                    #Inteiro positivo que define o número de interfaces a mostar quando utilizada a flag -p
-SORT_TYPE=-1                                                    #Inteiro que define o tipo de ordenação usada quando utilizado as opções de ordenação
-IS_LOOP=0                                                       #(0-1) define se o programa deve ser corrido em loop (flag -l)
-IS_REVERSE=0                                                    #(0-1) define se a flag -v foi utilizada para mostrar a ordem inversa
-declare -a TXDATA
-declare -a RXDATA
-declare -a TXRATE
-declare -a RXRATE
-declare -a RXLOOP=($(for i in ${INTERFACES[@]}; do echo 0; done))
-declare -a TXLOOP=($(for i in ${INTERFACES[@]}; do echo 0; done))
-export LC_NUMERIC="en_US.UTF-8"
+INTERFACES=($(ip -o link show | awk -F': ' '{print $2}' | sort))    #Interfaces de rede ordenadas por ordem alfabética
+DATA_SIZE=-1                                                        #Valor default da tipo de dados (bytes) 0=b 1=Kb 2=Mb
+TIME=${@: -1}                                                       #Input do utilizador do tempo que o programa deve correr
+REGEX_STR=-1                                                        #Regex inserida quando utilizada a flag -c
+LIST_SIZE=-1                                                        #Inteiro positivo que define o número de interfaces a mostar quando utilizada a flag -p
+SORT_TYPE=-1                                                        #Inteiro que define o tipo de ordenação usada quando utilizado as opções de ordenação
+IS_LOOP=0                                                           #(0-1) define se o programa deve ser corrido em loop (flag -l)
+IS_REVERSE=0                                                        #(0-1) define se a flag -v foi utilizada para mostrar a ordem inversa
+declare -a TXDATA                                                   #Array onde vai ser guardado os valores TX
+declare -a RXDATA                                                   #Array onde vai ser guardado os valores RX
+declare -a TXRATE                                                   #Array onde vai ser guardado os valores TXRATE
+declare -a RXRATE                                                   #Array onde vai ser guardado os valores RXRATE
+declare -a RXLOOP=($(for i in ${INTERFACES[@]}; do echo 0; done))   #Array onde vai ser guardado os valores RXTOT (Este vetor tem de ser inicializado com 0s senão a primeira soma é impossível)
+declare -a TXLOOP=($(for i in ${INTERFACES[@]}; do echo 0; done))   #Array onde vai ser guardado os valores TXTOT (Este vetor tem de ser inicializado com 0s senão a primeira soma é impossível)
+export LC_NUMERIC="en_US.UTF-8"                                     #Define o tipo de formatação dos valores numéricos (foi usado para resolver o problema de não aparecer o 0 das unidades (.23->0.23))
 
 #Função onde o script é iniciado e onde a ordem de execução das funções é definida 
 function main() {
-    validate_time
     validate_args $@                                            #Validação dos dados inseridos
+    validate_time                                               #Validação do valor de tempo
     data_cleansing                                              #Filtragem das interfaces a mostrar consoante as opções usadas
     print_data                                                  #Impressão da tabela de dados gerada após o tratamento dos dados
 }
@@ -35,6 +35,8 @@ function main() {
 # é passado um código para a variável DATA_SIZE
 # -t-/T/-r/-R funcionamento semelhante aos comandos anteriores onde a variável é SORT_TYPE
 # -v é passado para a variável IS_REVERSE o valor 1
+# Caso seja uma opção inválida, é chamada a função usage com as regras a usar
+# É feito no final a validação se os argumentos inseridos foram usados corretamente, isto é, se o número de argumentos é o correto
 function validate_args() {
     while getopts 'c:p:bkmltrTRv' option; do
         case ${option} in
@@ -94,6 +96,8 @@ function validate_args() {
 
 }
 
+# Função que é invocada caso seja inserido um valor inválido
+# Imprimindo todas as opções válidas
 function usage {
         echo "Usage: $(basename $0) [-cpbkmltrTRv]" 2>&1
         echo '   -c   filtra por expressão regular'
@@ -110,13 +114,15 @@ function usage {
         exit 1
 }
 
+# Função de validação do tempo inserido
+# O tempo inserido tem de ser um número inteiro positivo
+# Caso não seja é impressa uma mensagem de erro e o programa termina
 function validate_time () {
-    if [[ ! $TIME =~ ^[1-9][0-9]+$ ]]; then
-        echo "ERRO! Valor inválido o tempo"
+    if [[ ! $TIME =~ ^[1-9][0-9]*$ ]]; then
+        echo "ERRO! valor inválido o tempo"
         exit 1
     fi
 }
-
 
 # Função responsável por validar os dados das opções -b/-k/-m
 # Verifica se DATA_SIZE continua com o valor -1 (ainda não usada)
@@ -183,6 +189,7 @@ function validate_regex_string () {
 # itera por todas as Interfaces adicionando a interfaces_filtered as válidas
 # passa a seguir para o número de interfaces a mostrar (-p) com o comando cut
 # são selecionadas da interface 1 até n e o resto é removido
+# Caso esse valor seja 0 não vale a pena estar a correr o programa portanto é impressa uma mensagem de erro
 # Caso não seja selecionada nenhuma opção de tamanho de dados é assumido o -b(código 0)
 function data_cleansing () {
     local interfaces_filtered=()
@@ -211,11 +218,13 @@ function data_cleansing () {
 }
 
 # Função responsável pela impressão dos resultados
-# É efetuada a recolha de dados uma primeira vez e
-# a seguir é feito um sleep para dar o intervalo de recolha de dados
-# e estes guardados num array
-# terminado o sleep é efetuada a segunda iteração sobre as interface
-# para recolher os dados finais e calculados os valores a mostrar 
+# Os vetores TXDATA E RXDATA são reiniciados para limpar os dados da última iteração
+# É efetuada a primeira recolha de dados e são guardados os valores nos respetivos vetores
+# É executado um sleep com o tempo inserido pelo utilizador
+# É efetuada a segunda recolha de dados onde é calculado o valor de TX e RX
+# Caso seja selecionada alguma opção de tamanho de dados, é efetuada a conversão
+# É efetuado o cálculo do TXRATE e RXRATE com duas casas decimais
+# Caso o script esteja a correr em loop é adicionado o TX/RX da iteração atual ao que se encontra no TX/RXLOOP 
 function calculate_data() {
     local i=0
     TXDATA=()
@@ -231,9 +240,9 @@ function calculate_data() {
     for itf in ${INTERFACES[@]}
     do
         #RX do intervalo (final - inicial)
-        RXDATA[i]=$(($(ifconfig $itf | awk '/RX packets /{print $5}')-${RXDATA[$i]}))
+        RXDATA[i]=$(($(ifconfig $itf | awk '/RX packets /{print $5}')-${RXDATA[i]}))
         #TX do intervalo (final - inicial)
-        TXDATA[i]=$(($(ifconfig $itf | awk '/TX packets /{print $5}')-${TXDATA[$i]}))
+        TXDATA[i]=$(($(ifconfig $itf | awk '/TX packets /{print $5}')-${TXDATA[i]}))
 
         if [[ ! $DATA_SIZE = 0 ]];then
             TXDATA[i]=$(echo "scale=0 ;$TXDATA/1024*$DATA_SIZE" | bc)
@@ -250,20 +259,30 @@ function calculate_data() {
         ((i+=1))
     done
 }
+
+# Função de print do conteúdo
+# Para cada interface, é impresso o conteúdo do respectivo TX RX TRATE RXRATE
+# Caso esteja a correr em loop (IS_LOOP != 1) são adicionadas mais duas colunas com os totais
 function print_table () {
     local i=0
     for int in ${INTERFACES[@]}; do      
         if [[ $IS_LOOP = 0 ]];then
             local TABLECONTENT="%-20s %12d %12d %12.1f %12.1f\n"
-            printf "$TABLECONTENT" "$int" "${TXDATA[$i]}" "${RXDATA[$i]}" "${TXRATE[$i]}" "${RXRATE[$i]}"
+            printf "$TABLECONTENT" "$int" "${TXDATA[i]}" "${RXDATA[i]}" "${TXRATE[i]}" "${RXRATE[i]}"
         else
             local TABLECONTENT="%-20s %12d %12d %12.1f %12.1f %12d %12d\n"
-            printf "$TABLECONTENT" "$int" "${TXDATA[$i]}" "${RXDATA[$i]}" "${TXRATE[$i]}" "${RXRATE[$i]}" "${TXLOOP[$i]}" "${RXLOOP[$i]}"
+            printf "$TABLECONTENT" "$int" "${TXDATA[i]}" "${RXDATA[i]}" "${TXRATE[i]}" "${RXRATE[i]}" "${TXLOOP[i]}" "${RXLOOP[i]}"
         fi
-  
         ((i+=1))
     done     
 }
+
+# Função responsável pela impressão dos dados ordenados
+# A função calculate_data é chamada para obter os dados necessários
+# Consoante o método de ordenação definido pelo user (-1 default) é executado
+# o sort pretendido onde os valores de argumento de sort é o número da coluna a ser usada
+# para a ordenação. Caso seja usada a opção -v é adicionada ao comando sort a opção -r.
+# Em qualquer dos casos a função print_table é chamada com os dados ainda "não ordenados"
 function print_sorted_data() {
         calculate_data
         case $SORT_TYPE in
@@ -288,6 +307,10 @@ function print_sorted_data() {
     esac
 }
 
+# Função responsável por imprimir a tabela 
+# Aqui é definido o Cabeçalho da tabela, que muda consoante o valor de IS_LOOP
+# Caso esteja a correr em loop a função print_sorted_data fica a correr em loop para
+# estar sempre a obter dados
 function print_data() {
     if [[ $IS_LOOP = 0 ]];then
         local TABLEHEADER="%-20s %12s %12s %12s %12s\n"
@@ -305,4 +328,5 @@ function print_data() {
     fi 
 }
 
+#Chamada da função main, com os argumentos inseridos pelo utilizador
 main $@
