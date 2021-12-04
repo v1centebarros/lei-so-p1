@@ -110,10 +110,9 @@ function usage {
         exit 1
 }
 
-
 function validate_time () {
-    if [[ ! $TIME =~ ^[1-9]+$ ]]; then
-        echo "ERRO! valor inválido o tempo"
+    if [[ ! $TIME =~ ^[1-9][0-9]+$ ]]; then
+        echo "ERRO! Valor inválido o tempo"
         exit 1
     fi
 }
@@ -156,7 +155,7 @@ function validate_list_size () {
         if [[ ${OPTARG} =~ ^[1-9]+$ ]]; then
             LIST_SIZE=${OPTARG}
         else
-            echo "ERRO! valor inválido para -p"
+            echo "ERRO! Valor inválido para -p"
             exit 1
         fi
     else
@@ -174,7 +173,7 @@ function validate_regex_string () {
     if [[ $REGEX_STR = -1 ]]; then
         REGEX_STR=${OPTARG}
     else
-        echo "ERRO a opção -c foi utilizada mais do que uma vez"
+        echo "ERRO! A opção -c foi utilizada mais do que uma vez"
         exit 1
     fi
 }
