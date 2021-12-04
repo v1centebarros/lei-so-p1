@@ -19,6 +19,7 @@ export LC_NUMERIC="en_US.UTF-8"
 
 #Função onde o script é iniciado e onde a ordem de execução das funções é definida 
 function main() {
+    validate_time
     validate_args $@                                            #Validação dos dados inseridos
     data_cleansing                                              #Filtragem das interfaces a mostrar consoante as opções usadas
     print_data                                                  #Impressão da tabela de dados gerada após o tratamento dos dados
@@ -79,12 +80,17 @@ function validate_args() {
                 IS_LOOP=1
             ;;
             ?)
-                echo "Invalid option: -${OPTARG}."
+                echo "Opção Inválida: -${OPTARG}."
                 echo
                 usage
             ;;
         esac
     done
+
+    if [[ $OPTIND -ne $# ]]; then
+        echo "Número de argumentos inválido"
+        exit 1
+    fi
 
 }
 
@@ -103,6 +109,15 @@ function usage {
         echo '   -v   ordenar pela ordem inversa'
         exit 1
 }
+
+
+function validate_time () {
+    if [[ ! $TIME =~ ^[1-9]+$ ]]; then
+        echo "ERRO! valor inválido o tempo"
+        exit 1
+    fi
+}
+
 
 # Função responsável por validar os dados das opções -b/-k/-m
 # Verifica se DATA_SIZE continua com o valor -1 (ainda não usada)
@@ -180,9 +195,14 @@ function data_cleansing () {
             fi
         done
         INTERFACES=(${interfaces_filtered[@]})
+
+        if [[ ${#INTERFACES[@]} -le 0 ]]; then
+            echo "ERRO! Não há interfaces a mostrar. Experimente outra regex"
+            exit 1
+        fi
     fi
     
-    if [[ ! $LIST_SIZE =-1 ]]; then
+    if [[ ! $LIST_SIZE = -1 ]]; then
         INTERFACES=($(cut -d ' ' -f 1-$LIST_SIZE <<< ${INTERFACES[@]}))
     fi
 
@@ -249,22 +269,22 @@ function print_sorted_data() {
         calculate_data
         case $SORT_TYPE in
         -1 ) 
-            print_table
+            print_table | sort $( (( IS_REVERSE == 1 )) && printf %s '-r' )
         ;;
         1 )
-            print_table | sort -k 2 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 2 -n $( (( IS_REVERSE == 1 )) && printf %s '-r' )
         ;;
 
         2 )
-            print_table | sort -k 3 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 3 -n $( (( IS_REVERSE == 1 )) && printf %s '-r' )
         ;;
 
         3 )
-            print_table | sort -k 4 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 4 -n $( (( IS_REVERSE == 1 )) && printf %s '-r' )
         ;;
 
         4 )
-            print_table | sort -k 5 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 5 -n $( (( IS_REVERSE == 1 )) && printf %s '-r' )
         ;;
     esac
 }
