@@ -1,7 +1,7 @@
 #!/bin/bash
 clear
 
-INTERFACES=$(ip -o link show | awk -F': ' '{print $2}' | sort)  #Interfaces de rede ordenadas por ordem alfabética
+INTERFACES=($(ip -o link show | awk -F': ' '{print $2}' | sort))  #Interfaces de rede ordenadas por ordem alfabética
 DATA_SIZE=-1                                                    #Valor default da tipo de dados (bytes) 1=Kb 2=Mb
 TIME=${@: -1}                                                   #Input do utilizador do tempo que o programa deve correr
 REGEX_STR=-1                                                    #Regex inserida quando utilizada a flag -c
@@ -9,7 +9,13 @@ LIST_SIZE=-1                                                    #Inteiro positiv
 SORT_TYPE=-1                                                    #Inteiro que define o tipo de ordenação usada quando utilizado as opções de ordenação
 IS_LOOP=0                                                       #(0-1) define se o programa deve ser corrido em loop (flag -l)
 IS_REVERSE=0                                                    #(0-1) define se a flag -v foi utilizada para mostrar a ordem inversa
-declare -A LOOP_DATA
+declare -a TXDATA
+declare -a RXDATA
+declare -a TXRATE
+declare -a RXRATE
+declare -a RXLOOP=($(for i in ${INTERFACES[@]}; do echo 0; done))
+declare -a TXLOOP=($(for i in ${INTERFACES[@]}; do echo 0; done))
+export LC_NUMERIC="en_US.UTF-8"
 
 #Função onde o script é iniciado e onde a ordem de execução das funções é definida 
 function main() {
@@ -132,7 +138,7 @@ function validate_sort_type () {
 # o valor inserido é um valor inteiro positivo
 function validate_list_size () {
     if [[ $LIST_SIZE -eq -1 ]];then 
-        if [[ ${OPTARG} =~ ^[0-9]+$ ]]; then
+        if [[ ${OPTARG} =~ ^[1-9]+$ ]]; then
             LIST_SIZE=${OPTARG}
         else
             echo "ERRO! valor inválido para -p"
@@ -167,17 +173,17 @@ function validate_regex_string () {
 function data_cleansing () {
     local interfaces_filtered=()
     if [[ ! $REGEX_STR = -1 ]]; then
-        for int in $INTERFACES; do
+        for int in ${INTERFACES[@]}; do
             if [[ $int =~ $REGEX_STR ]]
             then
                 interfaces_filtered+=($int)
             fi
         done
-        INTERFACES=${interfaces_filtered[@]}
+        INTERFACES=(${interfaces_filtered[@]})
     fi
     
-    if [[ ! $LIST_SIZE = -1 ]]; then
-        INTERFACES=$(cut -d ' ' -f 1-$LIST_SIZE <<< ${INTERFACES[@]})
+    if [[ ! $LIST_SIZE =-1 ]]; then
+        INTERFACES=($(cut -d ' ' -f 1-$LIST_SIZE <<< ${INTERFACES[@]}))
     fi
 
     if [[ $DATA_SIZE = -1 ]]; then
@@ -191,49 +197,56 @@ function data_cleansing () {
 # e estes guardados num array
 # terminado o sleep é efetuada a segunda iteração sobre as interface
 # para recolher os dados finais e calculados os valores a mostrar 
-function print_table() {
-    local ITF_DATA=()
-    for i in $INTERFACES
+function calculate_data() {
+    local i=0
+    TXDATA=()
+    RXDATA=()
+    for itf in ${INTERFACES[@]}
     do
-        ITF_DATA+=($(ifconfig $i | awk '/RX packets /{print $5}'))
-        ITF_DATA+=($(ifconfig $i | awk '/TX packets /{print $5}'))
+        RXDATA+=($(ifconfig $itf | awk '/RX packets /{print $5}'))
+        TXDATA+=($(ifconfig $itf | awk '/TX packets /{print $5}'))
+
     done
     sleep $TIME    
     
-    idx=-1
-    for i in $INTERFACES
+    for itf in ${INTERFACES[@]}
     do
-        #TX do intervalo (final - inicial)
-        TX=$(($(ifconfig $i | awk '/RX packets /{print $5}')-${ITF_DATA[$(($idx+1))]}))
         #RX do intervalo (final - inicial)
-        RX=$(($(ifconfig $i | awk '/TX packets /{print $5}')-${ITF_DATA[$(($idx+2))]}))
-
-        
+        RXDATA[i]=$(($(ifconfig $itf | awk '/RX packets /{print $5}')-${RXDATA[$i]}))
+        #TX do intervalo (final - inicial)
+        TXDATA[i]=$(($(ifconfig $itf | awk '/TX packets /{print $5}')-${TXDATA[$i]}))
 
         if [[ ! $DATA_SIZE = 0 ]];then
-            TX=$(echo "scale=2 ;$TX/1024*$DATA_SIZE" | bc)
-            RX=$(echo "scale=2 ;$RX/1024*$DATA_SIZE" | bc)
+            TXDATA[i]=$(echo "scale=0 ;$TXDATA/1024*$DATA_SIZE" | bc)
+            RXDATA[i]=$(echo "scale=0 ;$RXDATA/1024*$DATA_SIZE" | bc)
         fi
 
-        TXRATE=$(echo "scale=2;$TX/$TIME" | bc)
-        RXRATE=$(echo "scale=2;$RX/$TIME" | bc)
+        TXRATE[i]=$(echo "scale=2;${TXDATA[i]}/$TIME" | bc)
+        RXRATE[i]=$(echo "scale=2;${RXDATA[i]}/$TIME" | bc)
 
-        LOOP_DATA[$(($idx+1))]=$((${LOOP_DATA[$(($idx+1))]}+$TX))
-        LOOP_DATA[$(($idx+2))]=$((${LOOP_DATA[$(($idx+2))]}+$RX))
-
-        if [[ $IS_LOOP = 0 ]]; then
-            local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s\n"
-            printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE"
-        else
-            local TABLECONTENT="%-20s %-12s %-12s %-12s %-12s %-12s %-12s\n"
-            printf "$TABLECONTENT" "$i" "$TX" "$RX" "$TXRATE" "$RXRATE" "${LOOP_DATA[$(($idx+1))]}" "${LOOP_DATA[$(($idx+2))]}"
+        if [[ $IS_LOOP = 1 ]]; then
+            TXLOOP[i]=$(echo "scale=0;${TXLOOP[i]}+${TXDATA[i]}" | bc)
+            RXLOOP[i]=$(echo "scale=0;${RXLOOP[i]}+${RXDATA[i]}" | bc)
         fi
-        #Como sabemos que queremos apenas o TX e o RX sabemos que ao ir buscar a informação ao vetor é sempre idx+1 ou idx+2
-        ((idx+=2)) 
+        ((i+=1))
     done
 }
-
+function print_table () {
+    local i=0
+    for int in ${INTERFACES[@]}; do      
+        if [[ $IS_LOOP = 0 ]];then
+            local TABLECONTENT="%-20s %12d %12d %12.1f %12.1f\n"
+            printf "$TABLECONTENT" "$int" "${TXDATA[$i]}" "${RXDATA[$i]}" "${TXRATE[$i]}" "${RXRATE[$i]}"
+        else
+            local TABLECONTENT="%-20s %12d %12d %12.1f %12.1f %12d %12d\n"
+            printf "$TABLECONTENT" "$int" "${TXDATA[$i]}" "${RXDATA[$i]}" "${TXRATE[$i]}" "${RXRATE[$i]}" "${TXLOOP[$i]}" "${RXLOOP[$i]}"
+        fi
+  
+        ((i+=1))
+    done     
+}
 function print_sorted_data() {
+        calculate_data
         case $SORT_TYPE in
         -1 ) 
             print_table
@@ -243,26 +256,26 @@ function print_sorted_data() {
         ;;
 
         2 )
-            print_table | sort -k 3 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 3 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
 
         3 )
-            print_table | sort -k 4 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 4 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
 
         4 )
-            print_table | sort -k 5 -n -r $( (( IS_REVERSE == 0 )) && printf %s '-r' )
+            print_table | sort -k 5 -n $( (( IS_REVERSE == 0 )) && printf %s '-r' )
         ;;
     esac
 }
 
 function print_data() {
     if [[ $IS_LOOP = 0 ]];then
-        local TABLEHEADER="%-20s %-12s %-12s %-12s %-12s\n"
+        local TABLEHEADER="%-20s %12s %12s %12s %12s\n"
         printf "$TABLEHEADER" "NETIF" "TX" "RX" "TRATE" "RRATE"
         print_sorted_data
     else
-        local TABLEHEADER="%-20s %-12s %-12s %-12s %-12s %-12s %-12s\n"
+        local TABLEHEADER="%-20s %12s %12s %12s %12s %12s %12s\n"
         printf "$TABLEHEADER" "NETIF" "TX" "RX" "TRATE" "RRATE" "TXTOT" "RXTOT"
 
         while :

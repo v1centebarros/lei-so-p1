@@ -20,9 +20,9 @@
 	- [X] **-T** ordenar por TRATE ascendente
 	- [X] **-R** ordenar por RRATE ascendente
 	- [X] **-v** ordenar pela ordem inversa
-- [ ] Argumento para correr o script em loop (**-l**)
-	- [ ] 2 colunas para mostrar a quantidade de dados transmitidos e recebidos desde o início da execução 
-	- [ ] As outras colunas representam apenas a última iteração
+- [X] Argumento para correr o script em loop (**-l**)
+	- [X] 2 colunas para mostrar a quantidade de dados transmitidos e recebidos desde o início da execução 
+	- [X] As outras colunas representam apenas a última iteração
 - [ ] Validar nos PCs da sala 101
 - [ ] Relatório
 
