@@ -93,7 +93,6 @@ function validate_args() {
         echo "Número de argumentos inválido"
         exit 1
     fi
-
 }
 
 # Função que é invocada caso seja inserido um valor inválido
