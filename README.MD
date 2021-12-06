@@ -23,8 +23,8 @@
 - [X] Argumento para correr o script em loop (**-l**)
 	- [X] 2 colunas para mostrar a quantidade de dados transmitidos e recebidos desde o início da execução 
 	- [X] As outras colunas representam apenas a última iteração
-- [ ] Validar nos PCs da sala 101
-- [ ] Relatório
+- [X] Validar nos PCs da sala 101
+- [X] Relatório
 
 # Comandos úteis
 * ifconfig

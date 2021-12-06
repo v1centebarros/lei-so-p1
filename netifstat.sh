@@ -82,8 +82,6 @@ function validate_args() {
                 IS_LOOP=1
             ;;
             ?)
-                echo "Opção Inválida: -${OPTARG}."
-                echo
                 usage
             ;;
         esac
@@ -245,8 +243,8 @@ function calculate_data() {
         TXDATA[i]=$(($(ifconfig $itf | awk '/TX packets /{print $5}')-${TXDATA[i]}))
 
         if [[ ! $DATA_SIZE = 0 ]];then
-            TXDATA[i]=$(echo "scale=0 ;$TXDATA/1024*$DATA_SIZE" | bc)
-            RXDATA[i]=$(echo "scale=0 ;$RXDATA/1024*$DATA_SIZE" | bc)
+            TXDATA[i]=$(echo "scale=0 ;${TXDATA[i]}/1024*$DATA_SIZE" | bc)
+            RXDATA[i]=$(echo "scale=0 ;${RXDATA[i]}/1024*$DATA_SIZE" | bc)
         fi
 
         TXRATE[i]=$(echo "scale=2;${TXDATA[i]}/$TIME" | bc)
